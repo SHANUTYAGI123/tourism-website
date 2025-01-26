@@ -225,7 +225,7 @@ const Navbar = () => {
               fontWeight: 'bold'
             }}
           >
-            Tourism
+            EasyTours
           </Typography>
 
           <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
