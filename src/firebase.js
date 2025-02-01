@@ -1,27 +1,28 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getAnalytics } from "firebase/analytics";
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBCEsHOPkcr_8lCv3IJ0Fepcq6QbWr26fc",
-  authDomain: "tourism-website-691fc.firebaseapp.com",
-  projectId: "tourism-website-691fc",
-  storageBucket: "tourism-website-691fc.firebasestorage.app",
-  messagingSenderId: "995225504891",
-  appId: "1:995225504891:web:1b844de98dcc02d2ace6de",
-  measurementId: "G-H497WW3K0N"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-
-// Initialize Analytics and Auth
-export const analytics = getAnalytics(app);
 export const auth = getAuth(app);
+
+// Initialize providers
 export const googleProvider = new GoogleAuthProvider();
+export const facebookProvider = new FacebookAuthProvider();
+
+// Configure Facebook provider with additional scopes if needed
+facebookProvider.addScope('email');
+facebookProvider.addScope('public_profile');
 
 // Google Sign-in function
 export const signInWithGoogle = async () => {
@@ -29,6 +30,20 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     return result;
   } catch (error) {
+    console.error("Error signing in with Google:", error);
     throw error;
   }
 };
+
+// Facebook Sign-in function
+export const signInWithFacebook = async () => {
+  try {
+    const result = await signInWithPopup(auth, facebookProvider);
+    return result;
+  } catch (error) {
+    console.error("Error signing in with Facebook:", error);
+    throw error;
+  }
+};
+
+export default app;

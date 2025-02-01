@@ -1,23 +1,40 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
-  AppBar, Box, Button, Drawer, IconButton, Toolbar, Typography,
-  Dialog, DialogContent, TextField, Tabs, Tab,
-  Tooltip, Alert, Snackbar, Avatar, Menu, MenuItem, CircularProgress,
-  Divider, InputAdornment
+  AppBar,
+  Box,
+  Toolbar,
+  IconButton,
+  Typography,
+  Menu,
+  Container,
+  Avatar,
+  Button,
+  MenuItem,
+  Tooltip,
+  Dialog,
+  DialogContent,
+  TextField,
+  InputAdornment,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
+import PersonIcon from '@mui/icons-material/Person';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CloseIcon from '@mui/icons-material/Close';
-import PersonIcon from '@mui/icons-material/Person';
-import { auth, signInWithGoogle } from '../../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../firebase';
+import { signInWithPopup, FacebookAuthProvider, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { FaFacebook } from 'react-icons/fa';
+import travelLogo from '../../assets/travel-logo.png';
 
 const Navbar = () => {
-  const [open, setOpen] = useState(false);
+  const [anchorElNav, setAnchorElNav] = useState(null);
+  const [anchorElUser, setAnchorElUser] = useState(null);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,590 +42,455 @@ const Navbar = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [confirmPasswordError, setConfirmPasswordError] = useState('');
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+  const handleOpenNavMenu = (event) => {
+    setAnchorElNav(event.currentTarget);
   };
 
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
+  const handleCloseNavMenu = () => {
+    setAnchorElNav(null);
   };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
+  const handleOpenUserMenu = (event) => {
+    setAnchorElUser(event.currentTarget);
   };
 
-  const handleClickOpen = () => {
-    handleMenuClose();
-    setOpen(true);
+  const handleCloseUserMenu = () => {
+    setAnchorElUser(null);
   };
 
-  const handleClose = () => {
-    setOpen(false);
+  const handleLoginOpen = () => {
+    setLoginOpen(true);
+  };
+
+  const handleLoginClose = () => {
+    setLoginOpen(false);
     setError('');
     setEmail('');
     setPassword('');
     setConfirmPassword('');
-    setEmailError('');
-    setPasswordError('');
-    setConfirmPasswordError('');
     setShowPassword(false);
     setTabValue(0);
   };
 
-  const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError('Email is required');
-      return false;
-    }
-    if (!re.test(email)) {
-      setEmailError('Invalid email format');
-      return false;
-    }
-    setEmailError('');
-    return true;
-  };
-
-  const validatePassword = (password) => {
-    if (!password) {
-      setPasswordError('Password is required');
-      return false;
-    }
-    if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      return false;
-    }
-    setPasswordError('');
-    return true;
-  };
-
-  const validateConfirmPassword = (password, confirmPassword) => {
-    if (tabValue === 1) {
-      if (!confirmPassword) {
-        setConfirmPasswordError('Please confirm your password');
-        return false;
-      }
-      if (password !== confirmPassword) {
-        setConfirmPasswordError('Passwords do not match');
-        return false;
-      }
-    }
-    setConfirmPasswordError('');
-    return true;
-  };
-
-  const handleLogin = async () => {
-    if (!validateEmail(email) || !validatePassword(password)) {
+  const handleEmailLogin = async () => {
+    if (!email || !password) {
+      setError('Please fill in all fields');
       return;
     }
-
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      handleClose();
-      setSnackbarMessage('Successfully logged in!');
-      setSnackbarOpen(true);
+      handleLoginClose();
     } catch (error) {
-      setError(error.message.replace('Firebase: ', ''));
-    } finally {
-      setLoading(false);
+      setError(error.message);
     }
+    setLoading(false);
   };
 
-  const handleSignup = async () => {
-    if (!validateEmail(email) || !validatePassword(password) || !validateConfirmPassword(password, confirmPassword)) {
+  const handleSignUp = async () => {
+    if (!email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
       return;
     }
-
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     setLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      handleClose();
-      setSnackbarMessage('Account created successfully!');
-      setSnackbarOpen(true);
+      handleLoginClose();
     } catch (error) {
-      setError(error.message.replace('Firebase: ', ''));
-    } finally {
-      setLoading(false);
+      setError(error.message);
     }
+    setLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
     setLoading(true);
     try {
-      await signInWithGoogle();
-      handleClose();
-      setSnackbarMessage('Successfully logged in with Google!');
-      setSnackbarOpen(true);
+      await signInWithPopup(auth, provider);
+      handleLoginClose();
     } catch (error) {
-      setError('Error signing in with Google');
-    } finally {
-      setLoading(false);
+      setError(error.message);
     }
+    setLoading(false);
   };
 
-  const handleLogout = () => {
-    auth.signOut();
-    handleMenuClose();
-    setSnackbarMessage('Successfully logged out!');
-    setSnackbarOpen(true);
-  };
-
-  const handleScroll = (sectionId) => {
-    if (location.pathname !== '/') {
-      navigate('/');
-      setTimeout(() => {
-        const element = document.getElementById(sectionId);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
-    } else {
-      const element = document.getElementById(sectionId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
+  const handleFacebookSignIn = async () => {
+    const provider = new FacebookAuthProvider();
+    setLoading(true);
+    try {
+      await signInWithPopup(auth, provider);
+      handleLoginClose();
+    } catch (error) {
+      setError(error.message);
     }
+    setLoading(false);
   };
 
-  const drawer = (
-    <Box sx={{ p: 2 }}>
-      <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }} onClick={handleDrawerToggle}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Home</Typography>
-      </Link>
-      <Link to="/destinations" style={{ textDecoration: 'none', color: 'inherit' }} onClick={handleDrawerToggle}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Destinations</Typography>
-      </Link>
-      <Link to="/tours" style={{ textDecoration: 'none', color: 'inherit' }} onClick={handleDrawerToggle}>
-        <Typography variant="h6" sx={{ mb: 2 }}>Tours</Typography>
-      </Link>
-      <Typography variant="h6" sx={{ mb: 2, cursor: 'pointer' }} onClick={() => { handleScroll('about'); handleDrawerToggle(); }}>
-        About
-      </Typography>
-      <Typography variant="h6" sx={{ mb: 2, cursor: 'pointer' }} onClick={() => { handleScroll('contact'); handleDrawerToggle(); }}>
-        Contact
-      </Typography>
-    </Box>
-  );
+  const pages = ['Home', 'Destinations', 'Tours', 'About', 'Contact'];
 
   return (
-    <>
-      <AppBar position="static" sx={{ backgroundColor: 'white' }}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' }, color: '#333' }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography
-            variant="h6"
-            component={Link}
-            to="/"
-            sx={{
-              flexGrow: 1,
-              color: '#333',
-              textDecoration: 'none',
-              fontWeight: 'bold'
-            }}
-          >
-            EasyTours
-          </Typography>
-
-          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
-            <Button
-              component={Link}
-              to="/"
-              sx={{ color: '#333', mr: 2 }}
-            >
-              Home
-            </Button>
-            <Button
-              component={Link}
-              to="/destinations"
-              sx={{ color: '#333', mr: 2 }}
-            >
-              Destinations
-            </Button>
-            <Button
-              component={Link}
-              to="/tours"
-              sx={{ color: '#333', mr: 2 }}
-            >
-              Tours
-            </Button>
-            <Button
-              color="inherit"
-              sx={{ color: '#333', mr: 2 }}
-              onClick={() => handleScroll('about')}
-            >
-              About
-            </Button>
-            <Button
-              color="inherit"
-              sx={{ color: '#333', mr: 2 }}
-              onClick={() => handleScroll('contact')}
-            >
-              Contact
-            </Button>
-            <Tooltip title={auth.currentUser ? 'Account' : 'Login/Signup'}>
-              <IconButton
-                onClick={handleMenuOpen}
+    <AppBar position="static" sx={{ backgroundColor: '#fff' }}>
+      <Container maxWidth="xl">
+        <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
+          {/* Logo and brand name - always on the left */}
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <img
+                src={travelLogo}
+                alt="EasyTours Logo"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  marginRight: '10px',
+                  objectFit: 'contain'
+                }}
+              />
+              <Typography
+                variant="h6"
+                noWrap
                 sx={{
                   color: '#333',
-                  backgroundColor: 'rgba(25, 118, 210, 0.04)',
-                  borderRadius: '50%',
-                  padding: 1,
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                  },
+                  textDecoration: 'none',
+                  fontWeight: 'bold',
+                  letterSpacing: '.1rem'
                 }}
               >
-                {auth.currentUser ? (
-                  <Avatar
-                    src={auth.currentUser.photoURL}
+                EasyTours
+              </Typography>
+            </Box>
+          </Link>
+
+          {/* Right side content */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {/* Mobile menu button */}
+            <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+              <IconButton
+                size="large"
+                aria-label="menu"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                onClick={handleOpenNavMenu}
+                sx={{ color: '#333' }}
+              >
+                <MenuIcon />
+              </IconButton>
+              <Menu
+                id="menu-appbar"
+                anchorEl={anchorElNav}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                open={Boolean(anchorElNav)}
+                onClose={handleCloseNavMenu}
+                sx={{
+                  display: { xs: 'block', md: 'none' },
+                }}
+              >
+                {pages.map((page) => (
+                  <MenuItem key={page} onClick={handleCloseNavMenu}>
+                    <Typography textAlign="center">{page}</Typography>
+                  </MenuItem>
+                ))}
+              </Menu>
+            </Box>
+
+            {/* Desktop navigation links */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+              {pages.map((page) => (
+                <Button
+                  key={page}
+                  component={Link}
+                  to={page === 'Home' ? '/' : `/${page.toLowerCase()}`}
+                  onClick={handleCloseNavMenu}
+                  sx={{ 
+                    color: '#333',
+                    mx: 1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(0,0,0,0.05)'
+                    }
+                  }}
+                >
+                  {page}
+                </Button>
+              ))}
+
+              {/* Auth section */}
+              <Box sx={{ ml: 2 }}>
+                {!auth.currentUser ? (
+                  <IconButton
+                    onClick={handleLoginOpen}
                     sx={{
-                      width: 32,
-                      height: 32,
-                      border: '2px solid #1976d2',
+                      bgcolor: '#ff6b6b',
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: '#ff5252'
+                      },
+                      width: 40,
+                      height: 40
                     }}
                   >
-                    {auth.currentUser.email?.[0].toUpperCase()}
-                  </Avatar>
+                    <PersonIcon />
+                  </IconButton>
                 ) : (
-                  <PersonIcon sx={{ 
-                    fontSize: 28,
-                    color: '#1976d2',
-                  }} />
+                  <Tooltip title="Account settings">
+                    <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+                      <Avatar 
+                        src={auth.currentUser.photoURL}
+                        alt={auth.currentUser.displayName}
+                      >
+                        {auth.currentUser.email?.[0].toUpperCase()}
+                      </Avatar>
+                    </IconButton>
+                  </Tooltip>
                 )}
-              </IconButton>
-            </Tooltip>
+              </Box>
+            </Box>
           </Box>
         </Toolbar>
-      </AppBar>
+      </Container>
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        {auth.currentUser ? (
-          <MenuItem onClick={handleLogout}>Logout</MenuItem>
-        ) : (
-          <MenuItem onClick={handleClickOpen}>Login/Signup</MenuItem>
-        )}
-      </Menu>
-
+      {/* Login Dialog */}
       <Dialog 
-        open={open} 
-        onClose={handleClose} 
-        maxWidth="xs" 
+        open={loginOpen} 
+        onClose={handleLoginClose}
+        maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
             borderRadius: 2,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-            overflow: 'hidden'
+            p: 0,
+            backgroundColor: 'white'
           }
         }}
       >
+        <IconButton
+          onClick={handleLoginClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: 'grey.500',
+            zIndex: 1
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+        
         <Box sx={{ 
-          bgcolor: 'primary.main',
-          py: 3,
-          px: 2,
-          textAlign: 'center',
-          position: 'relative'
+          textAlign: 'center', 
+          p: 3,
+          pb: 0
         }}>
-          <IconButton
-            aria-label="close"
-            onClick={handleClose}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'white',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              },
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-          <Avatar
-            sx={{
-              width: 60,
-              height: 60,
-              bgcolor: 'white',
-              color: 'primary.main',
-              margin: '0 auto 16px',
-            }}
-          >
-            <PersonIcon sx={{ fontSize: 40 }} />
+          <Avatar sx={{ 
+            mx: 'auto', 
+            mb: 1,
+            bgcolor: '#ff6b6b',
+            width: 48,
+            height: 48
+          }}>
+            <PersonIcon />
           </Avatar>
-          <Typography variant="h5" color="white" gutterBottom>
+          <Typography variant="h5" sx={{ mb: 1, color: '#333' }}>
             Welcome
           </Typography>
-          <Tabs 
-            value={tabValue} 
-            onChange={(e, newValue) => {
-              setTabValue(newValue);
-              setError('');
-              setEmailError('');
-              setPasswordError('');
-              setConfirmPasswordError('');
-            }} 
-            centered
-            sx={{
-              '& .MuiTab-root': {
-                minWidth: 120,
-                fontWeight: 'bold',
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&.Mui-selected': {
-                  color: 'white',
-                },
-              },
-              '& .MuiTabs-indicator': {
-                height: 3,
-                borderRadius: 1.5,
-                backgroundColor: 'white',
-              },
-            }}
-          >
-            <Tab label="Login" />
-            <Tab label="Sign Up" />
-          </Tabs>
+          <Typography variant="body1" sx={{ mb: 3, color: '#666' }}>
+            {tabValue === 0 ? 'Login' : 'Sign Up'}
+          </Typography>
         </Box>
-        <DialogContent sx={{ p: 4 }}>
+
+        <DialogContent sx={{ p: 3, pt: 2 }}>
           {error && (
-            <Alert 
-              severity="error" 
-              sx={{ 
-                mb: 3,
-                borderRadius: 2,
-                '& .MuiAlert-icon': {
-                  color: '#d32f2f'
-                }
-              }}
-            >
+            <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
+          
           <TextField
             autoFocus
-            margin="dense"
+            fullWidth
             label="Email Address"
             type="email"
-            fullWidth
-            variant="outlined"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setEmailError('');
-            }}
-            error={!!emailError}
-            helperText={emailError}
-            sx={{
-              mb: 2,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                '&:hover fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
+            onChange={(e) => setEmail(e.target.value)}
+            variant="outlined"
+            placeholder="Email Address"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <EmailIcon color={emailError ? 'error' : 'primary'} />
+                  <EmailIcon sx={{ color: '#666' }} />
                 </InputAdornment>
               ),
             }}
-          />
-          <TextField
-            margin="dense"
-            label="Password"
-            type={showPassword ? 'text' : 'password'}
-            fullWidth
-            variant="outlined"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setPasswordError('');
-            }}
-            error={!!passwordError}
-            helperText={passwordError}
-            sx={{
-              mb: tabValue === 1 ? 2 : 3,
+            sx={{ 
+              mb: 2,
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
-                '&:hover fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
+                bgcolor: '#f8f9fa'
+              }
             }}
+          />
+
+          <TextField
+            fullWidth
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            variant="outlined"
+            placeholder="Password"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <LockIcon color={passwordError ? 'error' : 'primary'} />
+                  <LockIcon sx={{ color: '#666' }} />
                 </InputAdornment>
               ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                    sx={{ color: 'primary.main' }}
-                  >
+                  <IconButton onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                   </IconButton>
                 </InputAdornment>
               ),
             }}
+            sx={{ 
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                bgcolor: '#f8f9fa'
+              }
+            }}
           />
-          {tabValue === 1 && (
-            <TextField
-              margin="dense"
-              label="Confirm Password"
-              type={showPassword ? 'text' : 'password'}
-              fullWidth
-              variant="outlined"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                setConfirmPasswordError('');
-              }}
-              error={!!confirmPasswordError}
-              helperText={confirmPasswordError}
-              sx={{
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                },
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockIcon color={confirmPasswordError ? 'error' : 'primary'} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          )}
+
           <Button
             fullWidth
             variant="contained"
-            onClick={tabValue === 0 ? handleLogin : handleSignup}
+            onClick={tabValue === 0 ? handleEmailLogin : handleSignUp}
             disabled={loading}
-            sx={{
+            sx={{ 
               mb: 2,
               py: 1.5,
+              bgcolor: '#ff6b6b',
               borderRadius: 2,
               textTransform: 'none',
               fontSize: '1rem',
-              boxShadow: 'none',
               '&:hover': {
-                boxShadow: 'none',
-                bgcolor: 'primary.dark',
-              },
+                bgcolor: '#ff5252'
+              }
             }}
           >
-            {loading ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              tabValue === 0 ? 'Login' : 'Sign Up'
-            )}
+            {loading ? <CircularProgress size={24} /> : (tabValue === 0 ? 'Login' : 'Sign Up')}
           </Button>
-          <Divider sx={{ 
-            my: 2,
-            '&::before, &::after': {
-              borderColor: 'rgba(0, 0, 0, 0.08)',
-            },
-          }}>
-            <Typography variant="body2" color="text.secondary" sx={{ px: 1 }}>
+
+          <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
               or
             </Typography>
-          </Divider>
+          </Box>
+
           <Button
             fullWidth
             variant="outlined"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            sx={{
+            sx={{ 
+              mb: 2,
               py: 1.5,
               borderRadius: 2,
               textTransform: 'none',
               fontSize: '1rem',
-              borderColor: 'rgba(0, 0, 0, 0.12)',
-              color: 'text.primary',
+              borderColor: '#ddd',
+              color: '#666',
               '&:hover': {
-                borderColor: 'primary.main',
-                bgcolor: 'rgba(25, 118, 210, 0.04)',
-              },
+                borderColor: '#ccc',
+                bgcolor: '#f8f9fa'
+              }
             }}
             startIcon={
-              loading ? (
-                <CircularProgress size={20} />
-              ) : (
-                <img 
-                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
-                  alt="Google" 
-                  style={{ width: 20, height: 20 }} 
-                />
-              )
+              <img 
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                style={{ width: 20, height: 20 }}
+              />
             }
           >
             Continue with Google
           </Button>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={handleFacebookSignIn}
+            disabled={loading}
+            sx={{ 
+              py: 1.5,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontSize: '1rem',
+              borderColor: '#1877f2',
+              color: '#1877f2',
+              '&:hover': {
+                borderColor: '#1877f2',
+                bgcolor: 'rgba(24, 119, 242, 0.04)'
+              }
+            }}
+            startIcon={<FaFacebook />}
+          >
+            Continue with Facebook
+          </Button>
+
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Button
+              onClick={() => setTabValue(tabValue === 0 ? 1 : 0)}
+              sx={{ 
+                textTransform: 'none',
+                color: '#666'
+              }}
+            >
+              {tabValue === 0 ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+            </Button>
+          </Box>
         </DialogContent>
       </Dialog>
 
-      <Drawer
-        variant="temporary"
-        anchor="left"
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        ModalProps={{
-          keepMounted: true,
+      {/* User menu */}
+      <Menu
+        sx={{ mt: '45px' }}
+        id="menu-appbar"
+        anchorEl={anchorElUser}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
-        sx={{
-          display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
+        keepMounted
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
         }}
+        open={Boolean(anchorElUser)}
+        onClose={handleCloseUserMenu}
       >
-        {drawer}
-      </Drawer>
-
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={() => setSnackbarOpen(false)}
-        message={snackbarMessage}
-      />
-    </>
+        <MenuItem onClick={handleCloseUserMenu}>
+          <Typography textAlign="center">Profile</Typography>
+        </MenuItem>
+        <MenuItem onClick={() => {
+          auth.signOut();
+          handleCloseUserMenu();
+        }}>
+          <Typography textAlign="center">Logout</Typography>
+        </MenuItem>
+      </Menu>
+    </AppBar>
   );
 };
 
